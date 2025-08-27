@@ -2,7 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { useLazyQuery } from '@apollo/client/react';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useRef } from 'react';
 import { useLocalStorage } from '../lib/presistence';
 import { gql } from '@apollo/client';
 import clsx from 'clsx';
@@ -40,8 +40,9 @@ export default function Source() {
   const [results, setResults] = useLocalStorage<Item[]>('source-results', []);
   const [hasSearched, setHasSearched] = useLocalStorage<boolean>('source-has-searched', false);
   const [isHydrated, setIsHydrated] = useState(false);
-
-  const [run, { loading, data }] = useLazyQuery<{ searchLocations: Item[] }>(SEARCH, {
+  const [isSearchTriggered, setIsSearchTriggered] = useState(false);
+  const [isFormActive, setIsFormActive] = useState(false);
+  const [run, { loading, data, called }] = useLazyQuery<{ searchLocations: Item[] }>(SEARCH, {
     fetchPolicy: 'no-cache',
   });
 
@@ -72,8 +73,11 @@ export default function Source() {
         }
         return newResults;
       });
+      
+      // Reset search state after data arrives
+      setHasSearched(false);
     }
-  }, [data, setResults]);
+  }, [data, setResults]); // Only depend on data and setResults
 
   // Reset hasSearched when query is cleared
   useEffect(() => {
@@ -86,6 +90,7 @@ export default function Source() {
     e.preventDefault();
     if (!query.trim()) return;
     setHasSearched(true);
+    setIsFormActive(false);
     run({ variables: { q: query.trim() } });
   };
 
@@ -121,13 +126,15 @@ export default function Source() {
           className="border rounded-lg px-3 py-2 w-full"
           placeholder="Search suburb or postcode"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setIsFormActive(true);
+          }}
         />
         <button className="bg-black text-white rounded-lg px-4 py-2" disabled={loading || !query.trim()}>
           {loading ? 'Searching…' : 'Search'}
         </button>
       </form>
-
       {categories.length > 0 && (
         <div className="flex items-center gap-2 text-sm">
           <span>Category:</span>
@@ -149,22 +156,12 @@ export default function Source() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
         <div className="p-3 max-h-72 overflow-auto">
-          {hasSearched && results.length === 0 && !loading ? (
-            <div 
-            className={clsx(
-              "text-sm opacity-70 transition-opacity",
-              hasSearched && results.length === 0 && !loading && "opacity-0"
-            )}
-            >No suburbs found for '{query}'.</div>
-          ) : !query.trim() ? (
-            <div 
-            className={clsx(
-              "text-sm opacity-70 transition-opacity",
-              !query.trim() && !loading && "opacity-0"
-            )}
-            >Enter a suburb or postcode to search.</div>
-          ) : (
-            <ul className="divide-y" key={`results-${filtered.length}-${selectedCategory}`}>
+          {loading && (
+            <div className="text-sm opacity-70">Searching...</div>
+          )}
+
+          {!loading && filtered.length > 0 && (
+            <ul className="divide-y">
               {filtered.map((i) => (
                 <li key={i.id} className="py-2 flex items-center justify-between">
                   <div>
@@ -177,7 +174,14 @@ export default function Source() {
                 </li>
               ))}
             </ul>
+            )}
+
+            {!loading && !filtered.length && !isFormActive && (
+            <div className="text-sm opacity-70">
+              No suburbs found for '{query}'.
+            </div>
           )}
+
         </div>
         <div>
           {hasCoords(selected) ? (
