@@ -72,9 +72,6 @@ ELASTIC_INDEX=ashish-bajracharya-index
 AUS_POST_BASE_URL=https://gavg8gilmf.execute-api.ap-southeast-2.amazonaws.com/staging/postcode/search.json
 AUS_POST_TOKEN=7710a8c5-ccd1-160f-70cf03e8-b2bbaf01
 
-# Google Maps API (optional)
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=your_google_maps_api_key_here
-```
 
 ### 4. Run the Development Server
 ```bash
